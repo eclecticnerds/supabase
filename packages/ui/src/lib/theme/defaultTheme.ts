@@ -676,8 +676,8 @@ export default {
           hover:bg-surface-300
         `,
         active: `
-          bg-surface-300 z-10
-          border-muted
+          bg-selection z-10
+          border-stronger
           border-1
         `,
         radio_offset: 'left-4',
@@ -712,8 +712,8 @@ export default {
           hover:bg-surface-300
         `,
         active: `
-          bg-surface-300 z-10
-          border-muted
+          bg-selection z-10
+          border-stronger
           border-1
         `,
         radio_offset: 'left-4',
@@ -752,8 +752,8 @@ export default {
           hover:bg-surface-300
         `,
         active: `
-          bg-surface-300 z-10
-          border-muted border-1
+          bg-selection z-10
+          border-stronger border-1
         `,
         radio_offset: 'left-4',
       },
@@ -788,8 +788,8 @@ export default {
           hover:bg-surface-300
         `,
         active: `
-          bg-surface-300 z-10
-          border-muted
+          bg-selection z-10
+          border-strong
           border-1
         `,
         radio_offset: 'left-4',
@@ -879,6 +879,8 @@ export default {
       large: `w-screen max-w-2xl h-full`,
       xlarge: `w-screen max-w-3xl h-full`,
       xxlarge: `w-screen max-w-4xl h-full`,
+      xxxlarge: `w-screen max-w-5xl h-full`,
+      xxxxlarge: `w-screen max-w-6xl h-full`,
     },
     align: {
       left: `

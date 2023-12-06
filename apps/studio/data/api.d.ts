@@ -13,10 +13,6 @@ type OneOf<T extends any[]> = T extends [infer Only]
   : never
 
 export interface paths {
-  '/platform/login': {
-    /** Redirects to dashboard homepage */
-    get: operations['LoginController_redirectToDashboardHomepage']
-  }
   '/platform/notifications': {
     /** Get notifications */
     get: operations['NotificationsController_getNotificationsV2']
@@ -172,9 +168,13 @@ export interface paths {
     /** Gets daily organization stats */
     get: operations['OrgDailyStatsController_getDailyStats']
   }
+  '/platform/organizations/{slug}/daily-stats/compute': {
+    /** Gets daily organization stats for compute */
+    get: operations['OrgDailyStatsController_getDailyStatsCompute']
+  }
   '/platform/organizations/{slug}/usage': {
     /** Gets usage stats */
-    get: operations['OrgUsageController_getDailyStats']
+    get: operations['OrgUsageController_getOrgUsage']
   }
   '/platform/organizations/{slug}/documents/standard-security-questionnaire': {
     /** Get standard security questionnaire URL */
@@ -242,7 +242,7 @@ export interface paths {
   }
   '/platform/organizations/{slug}/billing/subscription/preview': {
     /** Preview subscription changes */
-    post: operations['SubscriptionController_previewSubscriptionChange']
+    post: operations['SubscriptionController_previewSubscriptionChangeV2']
   }
   '/platform/organizations/{slug}/billing/subscription/schedule': {
     /** Deletes any upcoming subscription schedule */
@@ -254,7 +254,7 @@ export interface paths {
   }
   '/platform/organizations/{slug}/billing/invoices/upcoming': {
     /** Gets the upcoming invoice */
-    get: operations['OrgInvoicesController_getUpcomingInvoice']
+    get: operations['OrgInvoicesController_getUpcomingInvoiceV2']
   }
   '/platform/pg-meta/{ref}/column-privileges': {
     /** Retrieve column privileges */
@@ -547,7 +547,15 @@ export interface paths {
   }
   '/platform/projects/{ref}/analytics/endpoints/functions.inv-stats': {
     /** Gets a project's function invocation statistics */
-    get: operations['FunctionLogsController_getStatus']
+    get: operations['FunctionInvocationLogsController_getStatus']
+  }
+  '/platform/projects/{ref}/analytics/endpoints/functions.req-stats': {
+    /** Gets a project's function request statistics */
+    get: operations['FunctionRequestLogsController_getStatus']
+  }
+  '/platform/projects/{ref}/analytics/endpoints/functions.resource-usage': {
+    /** Gets a project's function resource usage */
+    get: operations['FunctionResourceLogsController_getStatus']
   }
   '/platform/projects/{ref}/analytics/endpoints/logs.all': {
     /** Gets project's logs */
@@ -884,7 +892,7 @@ export interface paths {
   }
   '/system/organizations/{slug}/usage': {
     /** Gets usage stats */
-    get: operations['OrgUsageSystemController_getDailyStats']
+    get: operations['OrgUsageSystemController_getOrgUsage']
   }
   '/system/organizations/{slug}/billing/subscription': {
     /** Gets the current subscription */
@@ -1269,7 +1277,15 @@ export interface paths {
   }
   '/v0/projects/{ref}/analytics/endpoints/functions.inv-stats': {
     /** Gets a project's function invocation statistics */
-    get: operations['FunctionLogsController_getStatus']
+    get: operations['FunctionInvocationLogsController_getStatus']
+  }
+  '/v0/projects/{ref}/analytics/endpoints/functions.req-stats': {
+    /** Gets a project's function request statistics */
+    get: operations['FunctionRequestLogsController_getStatus']
+  }
+  '/v0/projects/{ref}/analytics/endpoints/functions.resource-usage': {
+    /** Gets a project's function resource usage */
+    get: operations['FunctionResourceLogsController_getStatus']
   }
   '/v0/projects/{ref}/analytics/endpoints/logs.all': {
     /** Gets project's logs */
@@ -1656,13 +1672,13 @@ export interface paths {
     /** Starts Fly single sign on */
     get: operations['ExtensionController_startFlyioSSO']
   }
-  '/partners/flyio/extensions/{extension_id}/billing': {
-    /** Gets resource billing */
-    get: operations['ExtensionController_getResourceBilling']
-  }
   '/partners/flyio/extensions': {
     /** Creates a database */
     post: operations['ExtensionsController_provisionResource']
+  }
+  '/partners/flyio/organizations/{organization_id}': {
+    /** Gets information about the organization */
+    get: operations['OrganizationsController_getOrganization']
   }
   '/partners/flyio/organizations/{organization_id}/extensions': {
     /** Gets all databases that belong to the Fly organization */
@@ -1671,6 +1687,10 @@ export interface paths {
   '/partners/flyio/organizations/{organization_id}/sso': {
     /** Starts Fly single sign on */
     get: operations['OrganizationsController_startFlyioSSO']
+  }
+  '/partners/flyio/organizations/{organization_id}/billing': {
+    /** Gets the organizations current unbilled charges */
+    get: operations['FlyBillingController_getResourceBilling']
   }
 }
 
@@ -1691,14 +1711,27 @@ export interface components {
       ids: string[]
     }
     NotificationResponseV2: {
+      /** @enum {string} */
+      type:
+        | 'project.tier-limit-exceeded'
+        | 'postgresql.upgrade-available'
+        | 'postgresql.upgrade-completed'
+        | 'project.update-completed'
+        | 'project.informational'
+      /** @enum {string} */
+      status: 'new' | 'seen' | 'archived'
+      /** @enum {string} */
+      priority: 'Critical' | 'Warning' | 'Info'
       id: string
       inserted_at: string
-      type: Record<string, never>
-      status: Record<string, never>
-      priority: Record<string, never>
       name: string
       data: Record<string, never>
       meta: Record<string, never>
+    }
+    UpdateNotificationBodyV2: {
+      id: string
+      /** @enum {string} */
+      status: 'new' | 'seen' | 'archived'
     }
     ResetPasswordBody: {
       email: string
@@ -1739,6 +1772,8 @@ export interface components {
     }
     ProjectResourceWarningsResponse: {
       /** @enum {string|null} */
+      need_pitr: 'critical' | 'warning' | null
+      /** @enum {string|null} */
       disk_io_exhaustion: 'critical' | 'warning' | null
       /** @enum {string|null} */
       disk_space_exhaustion: 'critical' | 'warning' | null
@@ -1764,6 +1799,7 @@ export interface components {
       SMTP_MAX_FREQUENCY: number
       SMTP_SENDER_NAME?: string
       MAILER_AUTOCONFIRM: boolean
+      MAILER_ALLOW_UNVERIFIED_EMAIL_SIGN_INS: boolean
       MAILER_SUBJECTS_INVITE: string
       MAILER_SUBJECTS_CONFIRMATION: string
       MAILER_SUBJECTS_RECOVERY: string
@@ -1782,13 +1818,20 @@ export interface components {
       SECURITY_CAPTCHA_ENABLED: boolean
       SECURITY_CAPTCHA_PROVIDER: string
       SECURITY_CAPTCHA_SECRET: string
+      SESSIONS_TIMEBOX?: number
+      SESSIONS_INACTIVITY_TIMEOUT?: number
+      SESSIONS_SINGLE_PER_USER?: boolean
+      SESSIONS_TAGS?: string
       RATE_LIMIT_EMAIL_SENT: number
       RATE_LIMIT_SMS_SENT: number
       RATE_LIMIT_VERIFY?: number
       RATE_LIMIT_TOKEN_REFRESH?: number
       MAILER_SECURE_EMAIL_CHANGE_ENABLED: boolean
       REFRESH_TOKEN_ROTATION_ENABLED: boolean
-      PASSWORD_MIN_LENGTH: number
+      PASSWORD_HIBP_ENABLED?: boolean
+      PASSWORD_MIN_LENGTH?: number
+      PASSWORD_REQUIRED_CHARACTERS?: string
+      SECURITY_MANUAL_LINKING_ENABLED: boolean
       SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION: boolean
       SECURITY_REFRESH_TOKEN_REUSE_INTERVAL: number
       MAILER_OTP_EXP: number
@@ -1813,6 +1856,8 @@ export interface components {
       SMS_TEMPLATE: string
       SMS_TEST_OTP: string
       SMS_TEST_OTP_VALID_UNTIL: string
+      HOOK_MFA_VERIFICATION_ATTEMPT_ENABLED?: boolean
+      HOOK_MFA_VERIFICATION_ATTEMPT_URI?: string
       EXTERNAL_APPLE_ENABLED: boolean
       EXTERNAL_APPLE_CLIENT_ID: string
       EXTERNAL_APPLE_SECRET: string
@@ -1893,6 +1938,7 @@ export interface components {
       SMTP_PASS_ENCRYPTED?: string | null
       SMTP_MAX_FREQUENCY?: number
       SMTP_SENDER_NAME?: string
+      MAILER_ALLOW_UNVERIFIED_EMAIL_SIGN_INS?: boolean
       MAILER_AUTOCONFIRM?: boolean
       MAILER_SUBJECTS_INVITE?: string
       MAILER_SUBJECTS_CONFIRMATION?: string
@@ -1912,13 +1958,25 @@ export interface components {
       SECURITY_CAPTCHA_ENABLED?: boolean
       SECURITY_CAPTCHA_PROVIDER?: string
       SECURITY_CAPTCHA_SECRET?: string
+      SESSIONS_TIMEBOX?: number | null
+      SESSIONS_INACTIVITY_TIMEOUT?: number | null
+      SESSIONS_SINGLE_PER_USER?: boolean
+      SESSIONS_TAGS?: string | null
       RATE_LIMIT_EMAIL_SENT?: number
       RATE_LIMIT_SMS_SENT?: number
       RATE_LIMIT_VERIFY?: number
       RATE_LIMIT_TOKEN_REFRESH?: number
       MAILER_SECURE_EMAIL_CHANGE_ENABLED?: boolean
       REFRESH_TOKEN_ROTATION_ENABLED?: boolean
+      PASSWORD_HIBP_ENABLED?: boolean
       PASSWORD_MIN_LENGTH?: number
+      /** @enum {string} */
+      PASSWORD_REQUIRED_CHARACTERS?:
+        | 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789'
+        | 'abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789'
+        | 'abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$%^&*()_+-=[]{};\'\\:"|<>?,./`~'
+        | ''
+      SECURITY_MANUAL_LINKING_ENABLED?: boolean
       SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION?: boolean
       SECURITY_REFRESH_TOKEN_REUSE_INTERVAL?: number
       MAILER_OTP_EXP?: number
@@ -1944,6 +2002,8 @@ export interface components {
       SMS_VONAGE_API_SECRET?: string
       SMS_VONAGE_FROM?: string
       SMS_TEMPLATE?: string
+      HOOK_MFA_VERIFICATION_ATTEMPT_ENABLED?: boolean
+      HOOK_MFA_VERIFICATION_ATTEMPT_URI?: string
       EXTERNAL_APPLE_ENABLED?: boolean
       EXTERNAL_APPLE_CLIENT_ID?: string
       EXTERNAL_APPLE_SECRET?: string
@@ -2025,6 +2085,7 @@ export interface components {
       SMTP_MAX_FREQUENCY: number
       SMTP_SENDER_NAME?: string
       MAILER_AUTOCONFIRM: boolean
+      MAILER_ALLOW_UNVERIFIED_EMAIL_SIGN_INS: boolean
       MAILER_SUBJECTS_INVITE: string
       MAILER_SUBJECTS_CONFIRMATION: string
       MAILER_SUBJECTS_RECOVERY: string
@@ -2043,13 +2104,20 @@ export interface components {
       SECURITY_CAPTCHA_ENABLED: boolean
       SECURITY_CAPTCHA_PROVIDER: string
       SECURITY_CAPTCHA_SECRET: string
+      SESSIONS_TIMEBOX?: number
+      SESSIONS_INACTIVITY_TIMEOUT?: number
+      SESSIONS_SINGLE_PER_USER?: boolean
+      SESSIONS_TAGS?: string
       RATE_LIMIT_EMAIL_SENT: number
       RATE_LIMIT_SMS_SENT: number
       RATE_LIMIT_VERIFY?: number
       RATE_LIMIT_TOKEN_REFRESH?: number
       MAILER_SECURE_EMAIL_CHANGE_ENABLED: boolean
       REFRESH_TOKEN_ROTATION_ENABLED: boolean
-      PASSWORD_MIN_LENGTH: number
+      PASSWORD_HIBP_ENABLED?: boolean
+      PASSWORD_MIN_LENGTH?: number
+      PASSWORD_REQUIRED_CHARACTERS?: string
+      SECURITY_MANUAL_LINKING_ENABLED: boolean
       SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION: boolean
       SECURITY_REFRESH_TOKEN_REUSE_INTERVAL: number
       MAILER_OTP_EXP: number
@@ -2074,6 +2142,8 @@ export interface components {
       SMS_TEMPLATE: string
       SMS_TEST_OTP: string
       SMS_TEST_OTP_VALID_UNTIL: string
+      HOOK_MFA_VERIFICATION_ATTEMPT_ENABLED?: boolean
+      HOOK_MFA_VERIFICATION_ATTEMPT_URI?: string
       EXTERNAL_APPLE_ENABLED: boolean
       EXTERNAL_APPLE_CLIENT_ID: string
       EXTERNAL_APPLE_SECRET: string
@@ -2190,7 +2260,6 @@ export interface components {
       inserted_at: string
     }
     BackupsResponse: {
-      tierId: string
       tierKey: string
       region: string
       walg_enabled: boolean
@@ -2234,14 +2303,25 @@ export interface components {
       migrated_at: string | null
     }
     OrganizationResponse: {
-      id: string
+      id: number
+      slug: string
       name: string
+      billing_email: string
+      is_owner: boolean
+      stripe_customer_id: string
+      subscription_id?: string
+      opt_in_tags: string[]
     }
     GetOrganizationByFlyOrganizationIdResponse: {
       slug: string
     }
     CreateOrganizationBody: {
       name: string
+      kind?: string
+      size?: string
+      /** @enum {string} */
+      tier: 'tier_payg' | 'tier_pro' | 'tier_free' | 'tier_team' | 'tier_enterprise'
+      payment_method?: string
     }
     UpdateOrganizationBody: {
       name: string
@@ -2377,18 +2457,23 @@ export interface components {
       member_id: number
       org_id: number
     }
+    ProjectAllocation: {
+      ref: string
+      usage: number
+      name: string
+    }
     OrgMetricUsage: {
       usage: number
+      usage_original: number
       cost: number
+      unit_price_desc: string
       available_in_plan: boolean
       unlimited: boolean
       capped: boolean
       /** @enum {string} */
       metric:
         | 'EGRESS'
-        | 'DATABASE_EGRESS'
         | 'DATABASE_SIZE'
-        | 'STORAGE_EGRESS'
         | 'STORAGE_SIZE'
         | 'MONTHLY_ACTIVE_USERS'
         | 'MONTHLY_ACTIVE_SSO_USERS'
@@ -2414,6 +2499,7 @@ export interface components {
       pricing_package_price?: number
       pricing_package_size?: number
       pricing_per_unit_price?: number
+      project_allocations: components['schemas']['ProjectAllocation'][]
     }
     OrgUsageResponse: {
       usage_billing_enabled: boolean
@@ -2463,9 +2549,10 @@ export interface components {
     }
     Member: {
       gotrue_id: string
-      primary_email: string
+      primary_email: string | null
       role_ids: number[]
       username: string
+      mfa_enabled: boolean
     }
     UpdateMemberBody: {
       role_id: number
@@ -2658,9 +2745,7 @@ export interface components {
       /** @enum {string} */
       metric:
         | 'EGRESS'
-        | 'DATABASE_EGRESS'
         | 'DATABASE_SIZE'
-        | 'STORAGE_EGRESS'
         | 'STORAGE_SIZE'
         | 'MONTHLY_ACTIVE_USERS'
         | 'MONTHLY_ACTIVE_SSO_USERS'
@@ -2725,6 +2810,7 @@ export interface components {
       /** @enum {string} */
       tier: 'tier_payg' | 'tier_pro' | 'tier_free' | 'tier_team' | 'tier_enterprise'
     }
+    UpcomingInvoice: Record<string, never>
     ColumnPrivilege: {
       grantor: string
       grantee: string
@@ -3307,7 +3393,6 @@ export interface components {
       region: string
       status: string
       subscription_id: string
-      is_readonly_mode_enabled?: boolean
       is_branch_enabled: boolean
       preview_branch_refs: string[]
       disk_volume_size_gb?: number
@@ -3368,7 +3453,6 @@ export interface components {
       region: string
       status: string
       subscription_id: string
-      is_readonly_mode_enabled?: boolean
       is_branch_enabled: boolean
       preview_branch_refs: string[]
       disk_volume_size_gb?: number
@@ -3514,6 +3598,7 @@ export interface components {
       services: (
         | 'adminapi'
         | 'api-gateway'
+        | 'envoy'
         | 'functions'
         | 'gotrue'
         | 'kong'
@@ -4147,6 +4232,11 @@ export interface components {
       branch: string
       label?: string
     }
+    CreateCliLoginSessionBody: {
+      session_id: string
+      public_key: string
+      token_name?: string
+    }
     FunctionResponse: {
       id: string
       slug: string
@@ -4180,14 +4270,13 @@ export interface components {
         | 'ACTIVE_UNHEALTHY'
         | 'COMING_UP'
         | 'GOING_DOWN'
-        | 'INACTIVE'
         | 'INIT_FAILED'
         | 'REMOVED'
         | 'RESTORING'
         | 'UNKNOWN'
         | 'UPGRADING'
-        | 'PAUSING'
       reportingToken: string
+      databaseIdentifier: string
     }
     EventBody: {
       reportingToken: string
@@ -4553,11 +4642,19 @@ export interface components {
       entrypoint_path?: string
       import_map_path?: string
     }
+    OrganizationResponseV1: {
+      id: string
+      name: string
+    }
+    CreateOrganizationBodyV1: {
+      name: string
+    }
     V1OrganizationMemberResponse: {
       user_id: string
       user_name: string
       email?: string
       role_name: string
+      mfa_enabled: boolean
     }
     OAuthTokenBody: {
       /** @enum {string} */
@@ -4643,6 +4740,74 @@ export interface components {
         | 'RESTORING'
         | 'UPGRADING'
         | 'PAUSING'
+      /**
+       * @description Supabase organization id
+       * @example fly_123456789
+       */
+      supabase_org_id: string
+    }
+    ResourceProvisioningConfigResponse: {
+      /**
+       * @description PSQL connection string
+       * @example postgresql://postgres:dbpass@db.abcdefghijklmnop.supabase.co:5432/postgres
+       */
+      DATABASE_URL: string
+    }
+    ResourceProvisioningResponse: {
+      /** @description Supabase envs config */
+      config: components['schemas']['ResourceProvisioningConfigResponse']
+      /**
+       * @description The target Fly application for internal traffic
+       * @example ext-db-pgshhamktpsgnptvcadw
+       */
+      fly_app_name: string
+      /**
+       * @description Supabase project id
+       * @example pgshhamktpsgnptvcadw
+       */
+      id: string
+      /** @description Welcome message */
+      message: string
+      /**
+       * @description Supabase organization id
+       * @example fly_123456789
+       */
+      supabase_org_id: string
+    }
+    FlyOrganization: {
+      /** @enum {string} */
+      plan: 'free' | 'pro' | 'team' | 'enterprise'
+      id: string
+      supabase_org_id: string
+      name: string
+    }
+    OrganizationExtensionStatus: {
+      /** @description Supabase project instance compute size */
+      compute: string
+      /** @description Unique ID representing the fly extension */
+      id: string
+      /**
+       * @description Supabase project status
+       * @example ACTIVE_HEALTHY
+       * @enum {string}
+       */
+      status:
+        | 'REMOVED'
+        | 'COMING_UP'
+        | 'INACTIVE'
+        | 'ACTIVE_HEALTHY'
+        | 'ACTIVE_UNHEALTHY'
+        | 'UNKNOWN'
+        | 'GOING_DOWN'
+        | 'INIT_FAILED'
+        | 'RESTORING'
+        | 'UPGRADING'
+        | 'PAUSING'
+      /**
+       * @description Supabase organization id
+       * @example fly_123456789
+       */
+      supabase_org_id: string
     }
     ResourceBillingItem: {
       /**
@@ -4683,54 +4848,7 @@ export interface components {
       exceedsPlanLimits: boolean
       /** @description Whether the user is can have over-usage, which will be billed - this will be false on usage-capped plans. */
       overusageAllowed: boolean
-      extensionId: string
       items: components['schemas']['ResourceBillingItem'][]
-    }
-    ResourceProvisioningConfigResponse: {
-      /**
-       * @description PSQL connection string
-       * @example postgresql://postgres:dbpass@db.abcdefghijklmnop.supabase.co:5432/postgres
-       */
-      POSTGRES_URL: string
-    }
-    ResourceProvisioningResponse: {
-      /** @description Supabase envs config */
-      config: components['schemas']['ResourceProvisioningConfigResponse']
-      /**
-       * @description The target Fly application for internal traffic
-       * @example ext-db-pgshhamktpsgnptvcadw
-       */
-      fly_app_name: string
-      /**
-       * @description Supabase project id
-       * @example pgshhamktpsgnptvcadw
-       */
-      id: string
-      /** @description Welcome message */
-      message: string
-    }
-    OrganizationExtensionStatus: {
-      /** @description Supabase project instance compute size */
-      compute: string
-      /** @description Unique ID representing the fly extension */
-      id: string
-      /**
-       * @description Supabase project status
-       * @example ACTIVE_HEALTHY
-       * @enum {string}
-       */
-      status:
-        | 'REMOVED'
-        | 'COMING_UP'
-        | 'INACTIVE'
-        | 'ACTIVE_HEALTHY'
-        | 'ACTIVE_UNHEALTHY'
-        | 'UNKNOWN'
-        | 'GOING_DOWN'
-        | 'INIT_FAILED'
-        | 'RESTORING'
-        | 'UPGRADING'
-        | 'PAUSING'
     }
   }
   responses: never
@@ -4745,14 +4863,6 @@ export type $defs = Record<string, never>
 export type external = Record<string, never>
 
 export interface operations {
-  /** Redirects to dashboard homepage */
-  LoginController_redirectToDashboardHomepage: {
-    responses: {
-      200: {
-        content: never
-      }
-    }
-  }
   /** Get notifications */
   NotificationsController_getNotificationsV2: {
     parameters: {
@@ -4797,7 +4907,7 @@ export interface operations {
   NotificationsController_updateNotificationsV2: {
     requestBody: {
       content: {
-        'application/json': string[]
+        'application/json': components['schemas']['UpdateNotificationBodyV2'][]
       }
     }
     responses: {
@@ -5451,7 +5561,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          'application/json': components['schemas']['OrganizationResponse'][]
+          'application/json': components['schemas']['OrganizationResponseV1'][]
         }
       }
       /** @description Unexpected error listing organizations */
@@ -5705,9 +5815,7 @@ export interface operations {
       query: {
         metric:
           | 'EGRESS'
-          | 'DATABASE_EGRESS'
           | 'DATABASE_SIZE'
-          | 'STORAGE_EGRESS'
           | 'STORAGE_SIZE'
           | 'MONTHLY_ACTIVE_USERS'
           | 'MONTHLY_ACTIVE_SSO_USERS'
@@ -5749,9 +5857,37 @@ export interface operations {
       }
     }
   }
-  /** Gets usage stats */
-  OrgUsageController_getDailyStats: {
+  /** Gets daily organization stats for compute */
+  OrgDailyStatsController_getDailyStatsCompute: {
     parameters: {
+      query: {
+        endDate: string
+        startDate: string
+        projectRef?: string
+      }
+      path: {
+        /** @description Organization slug */
+        slug: string
+      }
+    }
+    responses: {
+      200: {
+        content: never
+      }
+      /** @description Failed to get daily organization stats for compute */
+      500: {
+        content: never
+      }
+    }
+  }
+  /** Gets usage stats */
+  OrgUsageController_getOrgUsage: {
+    parameters: {
+      query?: {
+        project_ref?: string
+        start?: string
+        end?: string
+      }
       path: {
         /** @description Organization slug */
         slug: string
@@ -6176,7 +6312,7 @@ export interface operations {
     }
   }
   /** Preview subscription changes */
-  SubscriptionController_previewSubscriptionChange: {
+  SubscriptionController_previewSubscriptionChangeV2: {
     parameters: {
       path: {
         /** @description Organization slug */
@@ -6246,7 +6382,7 @@ export interface operations {
     }
   }
   /** Gets the upcoming invoice */
-  OrgInvoicesController_getUpcomingInvoice: {
+  OrgInvoicesController_getUpcomingInvoiceV2: {
     parameters: {
       path: {
         /** @description Organization slug */
@@ -6256,7 +6392,7 @@ export interface operations {
     responses: {
       200: {
         content: {
-          'application/json': Record<string, never>
+          'application/json': components['schemas']['UpcomingInvoice']
         }
       }
       403: {
@@ -8666,7 +8802,7 @@ export interface operations {
     }
   }
   /** Gets a project's function invocation statistics */
-  FunctionLogsController_getStatus: {
+  FunctionInvocationLogsController_getStatus: {
     parameters: {
       query: {
         interval: '5min' | '15min' | '1hr' | '1day' | '7day'
@@ -8687,6 +8823,60 @@ export interface operations {
         content: never
       }
       /** @description Failed to get project's function invocation statistics */
+      500: {
+        content: never
+      }
+    }
+  }
+  /** Gets a project's function request statistics */
+  FunctionRequestLogsController_getStatus: {
+    parameters: {
+      query: {
+        interval: '5min' | '15min' | '1hr' | '1day' | '7day'
+        function_id: string
+      }
+      path: {
+        /** @description Project ref */
+        ref: string
+      }
+    }
+    responses: {
+      200: {
+        content: {
+          'application/json': components['schemas']['AnalyticsResponse']
+        }
+      }
+      403: {
+        content: never
+      }
+      /** @description Failed to get project's function request statistics */
+      500: {
+        content: never
+      }
+    }
+  }
+  /** Gets a project's function resource usage */
+  FunctionResourceLogsController_getStatus: {
+    parameters: {
+      query: {
+        interval: '5min' | '15min' | '1hr' | '1day' | '7day'
+        function_id: string
+      }
+      path: {
+        /** @description Project ref */
+        ref: string
+      }
+    }
+    responses: {
+      200: {
+        content: {
+          'application/json': components['schemas']['AnalyticsResponse']
+        }
+      }
+      403: {
+        content: never
+      }
+      /** @description Failed to get project's function resource usage */
       500: {
         content: never
       }
@@ -10124,6 +10314,40 @@ export interface operations {
       }
     }
   }
+  /** Create CLI login session */
+  CliLoginController_createCliLoginSession: {
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateCliLoginSessionBody']
+      }
+    }
+    responses: {
+      201: {
+        content: never
+      }
+      /** @description Failed to create CLI login session */
+      500: {
+        content: never
+      }
+    }
+  }
+  /** Retrieve CLI login session */
+  CliLoginController_getCliLoginSession: {
+    parameters: {
+      path: {
+        session_id: string
+      }
+    }
+    responses: {
+      200: {
+        content: never
+      }
+      /** @description Failed to retrieve CLI login session */
+      500: {
+        content: never
+      }
+    }
+  }
   /** Gets GoTrue template */
   AuthTemplateController_getTemplate: {
     parameters: {
@@ -10537,8 +10761,13 @@ export interface operations {
     }
   }
   /** Gets usage stats */
-  OrgUsageSystemController_getDailyStats: {
+  OrgUsageSystemController_getOrgUsage: {
     parameters: {
+      query?: {
+        project_ref?: string
+        start?: string
+        end?: string
+      }
       path: {
         /** @description Organization slug */
         slug: string
@@ -10624,6 +10853,7 @@ export interface operations {
     parameters: {
       header: {
         'x-github-delivery': string
+        'x-github-event': string
         'x-hub-signature-256': string
       }
     }
@@ -11954,13 +12184,13 @@ export interface operations {
   OrganizationsController_createOrganization: {
     requestBody: {
       content: {
-        'application/json': components['schemas']['CreateOrganizationBody']
+        'application/json': components['schemas']['CreateOrganizationBodyV1']
       }
     }
     responses: {
       201: {
         content: {
-          'application/json': components['schemas']['OrganizationResponse']
+          'application/json': components['schemas']['OrganizationResponseV1']
         }
       }
       /** @description Unexpected error creating an organization */
@@ -12106,27 +12336,27 @@ export interface operations {
       }
     }
   }
-  /** Gets resource billing */
-  ExtensionController_getResourceBilling: {
-    parameters: {
-      path: {
-        extension_id: string
-      }
-    }
-    responses: {
-      200: {
-        content: {
-          'application/json': components['schemas']['ResourceBillingResponse']
-        }
-      }
-    }
-  }
   /** Creates a database */
   ExtensionsController_provisionResource: {
     responses: {
       201: {
         content: {
           'application/json': components['schemas']['ResourceProvisioningResponse']
+        }
+      }
+    }
+  }
+  /** Gets information about the organization */
+  OrganizationsController_getOrganization: {
+    parameters: {
+      path: {
+        organization_id: string
+      }
+    }
+    responses: {
+      200: {
+        content: {
+          'application/json': components['schemas']['FlyOrganization']
         }
       }
     }
@@ -12156,6 +12386,21 @@ export interface operations {
     responses: {
       200: {
         content: never
+      }
+    }
+  }
+  /** Gets the organizations current unbilled charges */
+  FlyBillingController_getResourceBilling: {
+    parameters: {
+      path: {
+        organization_id: string
+      }
+    }
+    responses: {
+      200: {
+        content: {
+          'application/json': components['schemas']['ResourceBillingResponse']
+        }
       }
     }
   }
