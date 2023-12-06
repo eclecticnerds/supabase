@@ -8,6 +8,22 @@ name: supabase
 version: "3.8"
 services:
 
+  # updated per https://blog.activenode.de/the-ultimate-supabase-self-hosting-guide
+  nginx:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    ports:
+      # These ports are in format <host-port>:<container-port>
+      - '80:80' # Public HTTP Port
+      - '443:443' # Public HTTPS Port
+      - '81:81' # Admin Web Port
+    volumes:
+      - ./nginx-data:/data
+      - ./nginx-letsencrypt:/etc/letsencrypt
+      - ./nginx-snippets:/snippets:ro
+    #environment:
+    #  TZ: 'Europe/Berlin'
+
   studio:
     container_name: supabase-studio
     image: supabase/studio:20231023-7e2cd92
@@ -52,9 +68,6 @@ services:
     restart: unless-stopped
     # https://unix.stackexchange.com/a/294837
     entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
-    ports:
-      - ${KONG_HTTP_PORT}:8000/tcp
-      - ${KONG_HTTPS_PORT}:8443/tcp
     depends_on:
       analytics:
         condition: service_healthy
