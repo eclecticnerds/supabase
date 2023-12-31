@@ -312,7 +312,7 @@ services:
       # TODO: Allow configuring VERIFY_JWT per function. This PR might help: https://github.com/supabase/cli/pull/786
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
     volumes:
-      - ./volumes/functions:/home/deno/functions:Z
+      - ../../docker/volumes/functions:/home/deno/functions:Z
     command:
       - start
       - --main-service
