@@ -18,9 +18,9 @@ services:
       - '443:443' # Public HTTPS Port
     #  - '81:81' # Admin Web Port
     volumes:
-      - ./nginx-data:/data
-      - ./nginx-letsencrypt:/etc/letsencrypt
-      - ./nginx-snippets:/snippets:ro
+      - ./volumes/nginx/data:/data
+      - ./volumes/nginx/letsencrypt:/etc/letsencrypt
+      - ./volumes/nginx/snippets:/snippets:ro
     #environment:
     #  TZ: 'Europe/Berlin'
 
