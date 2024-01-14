@@ -27,6 +27,7 @@ import { useStore } from 'hooks'
 import { BASE_PATH } from 'lib/constants'
 import { useTableEditorStateSnapshot } from 'state/table-editor'
 import { useProjectContext } from '../ProjectLayout/ProjectContext'
+import { IS_PLATFORM } from 'common'
 
 export interface EntityListItemProps {
   id: number
@@ -34,6 +35,8 @@ export interface EntityListItemProps {
   item: Entity
   isLocked: boolean
 }
+
+const svgLoader = <span className="block w-4 h-4 bg-[#133929] rounded-sm" />
 
 const EntityListItem = ({ id, projectRef, item: entity, isLocked }: EntityListItemProps) => {
   const { ui } = useStore()
@@ -50,7 +53,8 @@ const EntityListItem = ({ id, projectRef, item: entity, isLocked }: EntityListIt
   }
 
   const exportTableAsCSV = async () => {
-    if (!project?.connectionString) return console.error('Connection string is required')
+    if (IS_PLATFORM && !project?.connectionString)
+      return console.error('Connection string is required')
     const toastId = ui.setNotification({
       category: 'loading',
       message: `Exporting ${entity.name} as CSV...`,
@@ -60,7 +64,7 @@ const EntityListItem = ({ id, projectRef, item: entity, isLocked }: EntityListIt
       const table = await getTable({
         id: entity.id,
         projectRef,
-        connectionString: project.connectionString,
+        connectionString: project?.connectionString,
       })
       const supaTable =
         table &&
@@ -76,7 +80,7 @@ const EntityListItem = ({ id, projectRef, item: entity, isLocked }: EntityListIt
 
       const rows = await fetchAllTableRows({
         projectRef,
-        connectionString: project.connectionString,
+        connectionString: project?.connectionString,
         table: supaTable,
       })
       const formattedRows = rows.map((row) => {
@@ -122,40 +126,47 @@ const EntityListItem = ({ id, projectRef, item: entity, isLocked }: EntityListIt
         className="flex items-center py-1 px-3 w-full space-x-3 max-w-[90%]"
       >
         <Tooltip.Root delayDuration={0} disableHoverableContent={true}>
-          <Tooltip.Trigger className="flex items-center">
-            {entity.type === ENTITY_TYPE.TABLE ? (
-              <SVG
-                className="table-icon"
-                src={`${BASE_PATH}/img/icons/table-icon.svg`}
-                style={{ width: `16px`, height: `16px`, strokeWidth: '1px' }}
-                preProcessor={(code: any) =>
-                  code.replace(/svg/, 'svg class="m-auto text-color-inherit"')
-                }
-              />
-            ) : entity.type === ENTITY_TYPE.VIEW ? (
-              <SVG
-                className="view-icon"
-                src={`${BASE_PATH}/img/icons/view-icon.svg`}
-                style={{ width: `16px`, height: `16px`, strokeWidth: '1px' }}
-                preProcessor={(code: any) =>
-                  code.replace(/svg/, 'svg class="m-auto text-color-inherit"')
-                }
-              />
-            ) : (
-              <div
-                className={clsx(
-                  'flex items-center justify-center text-xs h-4 w-4 rounded-[2px] font-bold',
-                  entity.type === ENTITY_TYPE.FOREIGN_TABLE && 'text-yellow-900 bg-yellow-500',
-                  entity.type === ENTITY_TYPE.MATERIALIZED_VIEW && 'text-purple-1000 bg-purple-500',
-                  entity.type === ENTITY_TYPE.PARTITIONED_TABLE &&
-                    'text-foreground-light bg-border-stronger'
-                )}
-              >
-                {Object.entries(ENTITY_TYPE)
-                  .find(([, value]) => value === entity.type)?.[0]?.[0]
-                  ?.toUpperCase()}
-              </div>
-            )}
+          <Tooltip.Trigger className="flex items-center" asChild>
+            <span>
+              {entity.type === ENTITY_TYPE.TABLE ? (
+                <SVG
+                  className="table-icon"
+                  src={`${BASE_PATH}/img/icons/table-icon.svg`}
+                  style={{ width: `16px`, height: `16px`, strokeWidth: '1px' }}
+                  preProcessor={(code: any) =>
+                    code.replace(/svg/, 'svg class="m-auto text-color-inherit"')
+                  }
+                  loader={svgLoader}
+                  cacheRequests={true}
+                />
+              ) : entity.type === ENTITY_TYPE.VIEW ? (
+                <SVG
+                  className="view-icon"
+                  src={`${BASE_PATH}/img/icons/view-icon.svg`}
+                  style={{ width: `16px`, height: `16px`, strokeWidth: '1px' }}
+                  preProcessor={(code: any) =>
+                    code.replace(/svg/, 'svg class="m-auto text-color-inherit"')
+                  }
+                  loader={svgLoader}
+                  cacheRequests={true}
+                />
+              ) : (
+                <div
+                  className={clsx(
+                    'flex items-center justify-center text-xs h-4 w-4 rounded-[2px] font-bold',
+                    entity.type === ENTITY_TYPE.FOREIGN_TABLE && 'text-yellow-900 bg-yellow-500',
+                    entity.type === ENTITY_TYPE.MATERIALIZED_VIEW &&
+                      'text-purple-1000 bg-purple-500',
+                    entity.type === ENTITY_TYPE.PARTITIONED_TABLE &&
+                      'text-foreground-light bg-border-stronger'
+                  )}
+                >
+                  {Object.entries(ENTITY_TYPE)
+                    .find(([, value]) => value === entity.type)?.[0]?.[0]
+                    ?.toUpperCase()}
+                </div>
+              )}
+            </span>
           </Tooltip.Trigger>
           <Tooltip.Portal>
             <Tooltip.Content side="bottom">
@@ -230,10 +241,10 @@ const EntityListItem = ({ id, projectRef, item: entity, isLocked }: EntityListIt
                 <IconCopy size="tiny" />
                 <p>Duplicate Table</p>
               </DropdownMenuItem>
-              <DropdownMenuItem key="delete-table" className="space-x-2" asChild>
+              <DropdownMenuItem key="view-policies" className="space-x-2" asChild>
                 <Link
                   key="view-policies"
-                  href={`/project/${projectRef}/auth/policies?search=${entity.id}`}
+                  href={`/project/${projectRef}/auth/policies?schema=${snap.selectedSchemaName}&search=${entity.id}`}
                 >
                   <IconLock size="tiny" />
                   <p>View Policies</p>

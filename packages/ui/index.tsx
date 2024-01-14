@@ -146,6 +146,17 @@ export {
   AccordionContent as AccordionContent_Shadcn_,
 } from './src/components/shadcn/ui/accordion'
 
+export {
+  Select as Select_Shadcn_,
+  SelectContent as SelectContent_Shadcn_,
+  SelectGroup as SelectGroup_Shadcn_,
+  SelectItem as SelectItem_Shadcn_,
+  SelectLabel as SelectLabel_Shadcn_,
+  SelectSeparator as SelectSeparator_Shadcn_,
+  SelectTrigger as SelectTrigger_Shadcn_,
+  SelectValue as SelectValue_Shadcn_,
+} from './src/components/shadcn/ui/select'
+
 export { Input as Input_Shadcn_ } from './src/components/shadcn/ui/input'
 
 export { TextArea as TextArea_Shadcn_ } from './src/components/shadcn/ui/text-area'
@@ -182,7 +193,6 @@ export { Separator } from './src/components/shadcn/ui/separator'
 // patterns
 
 export * from './src/patterns/SchemaTableNode'
-export { AssistantChatForm } from './src/patterns/AssistantChatForm'
 
 // links
 
@@ -372,8 +382,9 @@ export * from './src/components/Icon/icons/IconMeh'
 export * from './src/components/Icon/icons/IconMenu'
 export * from './src/components/Icon/icons/IconMessageCircle'
 export * from './src/components/Icon/icons/IconMessageSquare'
-export * from './src/components/Icon/icons/IconMicOff'
 export * from './src/components/Icon/icons/IconMic'
+export * from './src/components/Icon/icons/IconMicOff'
+export * from './src/components/Icon/icons/IconMicSolid'
 export * from './src/components/Icon/icons/IconMinimize2'
 export * from './src/components/Icon/icons/IconMinimize'
 export * from './src/components/Icon/icons/IconMinusCircle'
@@ -413,6 +424,7 @@ export * from './src/components/Icon/icons/IconPocket'
 export * from './src/components/Icon/icons/IconPower'
 export * from './src/components/Icon/icons/IconPrinter'
 export * from './src/components/Icon/icons/IconPresence'
+export * from './src/components/Icon/icons/IconProductHunt'
 export * from './src/components/Icon/icons/IconRadio'
 export * from './src/components/Icon/icons/IconRefreshCcw'
 export * from './src/components/Icon/icons/IconRefreshCw'

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
-    "dev:secrets:pull": "AWS_PROFILE=supabase-dev node internals/getSecrets.js",
+    "dev:secrets:pull": "AWS_PROFILE=supabase-dev node ../../scripts/getSecrets.js -n local/docs",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
     "start": "next start",
@@ -22,9 +22,10 @@
     "@mdx-js/react": "^2.3.0",
     "@next/bundle-analyzer": "^13.5.6",
     "@next/mdx": "^13.5.6",
-    "@octokit/auth-app": "^4.0.9",
-    "@octokit/core": "^4.2.0",
-    "@octokit/plugin-paginate-graphql": "^2.0.1",
+    "@octokit/auth-app": "^6.0.3",
+    "@octokit/core": "^5.0.2",
+    "@octokit/graphql": "^7.0.2",
+    "@octokit/plugin-paginate-graphql": "^4.0.0",
     "@radix-ui/react-accordion": "^1.1.2",
     "@supabase/auth-helpers-react": "^0.4.2",
     "@supabase/supabase-js": "^2.38.2",
@@ -60,6 +61,7 @@
     "remark": "^14.0.2",
     "remark-emoji": "^3.1.2",
     "remark-gfm": "^3.0.1",
+    "shared-data": "*",
     "ui": "*",
     "unist-builder": "^3.0.1",
     "unist-util-filter": "^4.0.1",
@@ -82,7 +84,7 @@
     "openapi-types": "^12.0.2",
     "sass": "^1.68.0",
     "tsconfig": "*",
-    "tsx": "^3.14.0",
+    "tsx": "^4.6.2",
     "typescript": "^5.2.2"
   }
 }
