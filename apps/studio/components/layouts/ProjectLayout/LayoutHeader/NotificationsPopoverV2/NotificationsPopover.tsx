@@ -1,17 +1,21 @@
 import clsx from 'clsx'
 import { useMemo, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
 import {
   Button,
-  IconInbox,
   PopoverContent_Shadcn_,
   PopoverTrigger_Shadcn_,
   Popover_Shadcn_,
-  Tabs,
+  TabsList_Shadcn_,
+  TabsTrigger_Shadcn_,
+  Tabs_Shadcn_,
 } from 'ui'
 
 import AlertError from 'components/ui/AlertError'
+import { CriticalIcon, WarningIcon } from 'ui-patterns/Icons/StatusIcons'
 import InfiniteList from 'components/ui/InfiniteList'
 import ShimmeringLoader, { GenericSkeletonLoader } from 'components/ui/ShimmeringLoader'
+import { useNotificationsArchiveAllMutation } from 'data/notifications/notifications-v2-archive-all-mutation'
 import { useNotificationsV2Query } from 'data/notifications/notifications-v2-query'
 import { useNotificationsSummaryQuery } from 'data/notifications/notifications-v2-summary-query'
 import { useNotificationsV2UpdateMutation } from 'data/notifications/notifications-v2-update-mutation'
@@ -20,7 +24,7 @@ import { useProjectsQuery } from 'data/projects/projects-query'
 import { useNotificationsStateSnapshot } from 'state/notifications'
 import NotificationRow from './NotificationRow'
 import { NotificationsFilter } from './NotificationsFilter'
-import { CriticalIcon, WarningIcon } from './NotificationsPopover.constants'
+import { ArchiveIcon, InboxIcon } from 'lucide-react'
 
 const NotificationsPopoverV2 = () => {
   const [open, setOpen] = useState(false)
@@ -52,16 +56,20 @@ const NotificationsPopoverV2 = () => {
       activeTab === 'archived'
         ? 'archived'
         : snap.filterStatuses.includes('unread')
-        ? 'new'
-        : undefined,
+          ? 'new'
+          : undefined,
     filters: {
       priority: snap.filterPriorities,
       organizations: snap.filterOrganizations,
       projects: snap.filterProjects,
     },
   })
-  const { data: summary, isSuccess: isSuccessSummary } = useNotificationsSummaryQuery()
+  const { data: summary } = useNotificationsSummaryQuery()
   const { mutate: updateNotifications } = useNotificationsV2UpdateMutation()
+  const { mutate: archiveAllNotifications, isLoading: isArchiving } =
+    useNotificationsArchiveAllMutation({
+      onSuccess: () => toast.success('Successfully archived all notifications'),
+    })
 
   const notifications = useMemo(() => data?.pages.flatMap((page) => page) ?? [], [data?.pages])
   const hasNewNotifications = summary?.unread_count ?? 0 > 0
@@ -87,19 +95,21 @@ const NotificationsPopoverV2 = () => {
         <Button
           type={hasNewNotifications ? 'outline' : 'text'}
           className={clsx(
+            'h-[26px]',
+            // !hasCritical || !hasWarning || !hasNewNotifications ? 'w-[26px]' : '',
             'group',
             hasNewNotifications ? 'rounded-full px-1.5' : 'px-1',
             hasCritical
               ? 'border-destructive-500 hover:border-destructive-600 hover:bg-destructive-300'
               : hasWarning
-              ? 'border-warning-500 hover:border-warning-600 hover:bg-warning-300'
-              : ''
+                ? 'border-warning-500 hover:border-warning-600 hover:bg-warning-300'
+                : ''
           )}
           icon={
             hasCritical ? (
-              <CriticalIcon className="transition-all -mr-3.5 group-hover:-mr-1 z-10" />
+              <CriticalIcon className="relative !w-3.5 !h-3.5 transition-all -mr-3.5 group-hover:-mr-1 z-10" />
             ) : hasWarning ? (
-              <WarningIcon className="transition-all -mr-3.5 group-hover:-mr-1 z-10" />
+              <WarningIcon className="relative !w-3.5 !h-3.5 transition-all -mr-3.5 group-hover:-mr-1 z-10" />
             ) : hasNewNotifications ? (
               <div
                 className={clsx(
@@ -113,7 +123,7 @@ const NotificationsPopoverV2 = () => {
             ) : null
           }
           iconRight={
-            <IconInbox
+            <InboxIcon
               size={18}
               strokeWidth={1.5}
               className="transition group-hover:text-foreground text-foreground-light"
@@ -125,24 +135,24 @@ const NotificationsPopoverV2 = () => {
         <div className="px-4">
           <p className="pt-4 pb-1 text-sm">Notifications</p>
           <div className="flex items-center">
-            <Tabs
-              size="medium"
-              type="underlined"
-              baseClassNames="!space-y-0"
-              listClassNames="[&>button>span]:text-xs"
-              activeId={activeTab}
-              onChange={(tab: 'inbox' | 'archived') => {
-                setActiveTab(tab)
+            <Tabs_Shadcn_
+              className="w-full"
+              onValueChange={(tab: string) => {
+                setActiveTab(tab as 'inbox' | 'archived')
                 if (tab === 'archived' && snap.filterStatuses.includes('unread')) {
                   snap.setFilters('unread', 'status')
                 }
               }}
+              value={activeTab}
             >
-              <Tabs.Panel
-                id="inbox"
-                label="Inbox"
-                iconRight={
-                  isSuccessSummary ? (
+              <div className="flex items-center">
+                <TabsList_Shadcn_ className="flex gap-5 grow border-none">
+                  <TabsTrigger_Shadcn_
+                    id="inbox"
+                    value="inbox"
+                    className="px-0 data-[state=active]:bg-transparent flex gap-2"
+                  >
+                    Inbox
                     <div
                       className={clsx([
                         'flex items-center justify-center text-xs rounded-full bg-surface-300 h-4',
@@ -151,13 +161,18 @@ const NotificationsPopoverV2 = () => {
                     >
                       {summary?.unread_count}
                     </div>
-                  ) : null
-                }
-              />
-              <Tabs.Panel id="archived" label="Archived" />
-            </Tabs>
-
-            <NotificationsFilter activeTab={activeTab} />
+                  </TabsTrigger_Shadcn_>
+                  <TabsTrigger_Shadcn_
+                    id="archived"
+                    value="archived"
+                    className="px-0 data-[state=active]:bg-transparent"
+                  >
+                    Archived
+                  </TabsTrigger_Shadcn_>
+                </TabsList_Shadcn_>
+                <NotificationsFilter activeTab={activeTab} />
+              </div>
+            </Tabs_Shadcn_>
           </div>
         </div>
         <div className="border-t">
@@ -172,7 +187,7 @@ const NotificationsPopoverV2 = () => {
             </div>
           )}
           {isSuccess && (
-            <div className="flex flex-1 h-[400px]">
+            <div className="flex flex-1 h-[400px] bg-background">
               {notifications.length > 0 &&
               !(activeTab === 'archived' && snap.filterStatuses.includes('unread')) ? (
                 <InfiniteList
@@ -189,10 +204,14 @@ const NotificationsPopoverV2 = () => {
                         rowHeights.current = { ...rowHeights.current, [idx]: height }
                       }
                     },
-                    getProject: (ref: string) => projects?.find((project) => project.ref === ref),
-                    getOrganization: (id: number) => organizations?.find((org) => org.id === id),
-                    onArchiveNotification: (id: string) =>
-                      updateNotifications({ ids: [id], status: 'archived' }),
+                    getProject: (ref: string) => projects?.find((project) => project.ref === ref)!,
+                    getOrganizationById: (id: number) =>
+                      organizations?.find((org) => org.id === id)!,
+                    getOrganizationBySlug: (slug: string) =>
+                      organizations?.find((org) => org.slug === slug)!,
+                    onUpdateNotificationStatus: (id: string, status: 'archived' | 'seen') => {
+                      updateNotifications({ ids: [id], status })
+                    },
                     queueMarkRead: (id: string) => {
                       if (markedRead.current && !markedRead.current.includes(id)) {
                         markedRead.current.push(id)
@@ -206,7 +225,7 @@ const NotificationsPopoverV2 = () => {
                 />
               ) : (
                 <div className="flex flex-col gap-y-4 items-center flex-grow justify-center">
-                  <IconInbox size={32} className="text-foreground-light" />
+                  <InboxIcon size={32} className="text-foreground-light" />
                   <div className="flex flex-col gap-y-1">
                     <p className="text-foreground-light text-sm mx-auto text-center">
                       {activeTab === 'archived'
@@ -218,10 +237,10 @@ const NotificationsPopoverV2 = () => {
                               : ''
                           }`
                         : snap.numFiltersApplied > 0
-                        ? `No notifications based on the ${snap.numFiltersApplied} filter${
-                            snap.numFiltersApplied > 1 ? 's' : ''
-                          } applied`
-                        : 'All caught up'}
+                          ? `No notifications based on the ${snap.numFiltersApplied} filter${
+                              snap.numFiltersApplied > 1 ? 's' : ''
+                            } applied`
+                          : 'All caught up'}
                     </p>
                     <p className="text-foreground-lighter text-xs w-60 mx-auto text-center">
                       {activeTab === 'archived'
@@ -234,6 +253,19 @@ const NotificationsPopoverV2 = () => {
             </div>
           )}
         </div>
+        {notifications.length > 0 && activeTab === 'inbox' && (
+          <div className="flex items-center justify-center p-1.5 border-t">
+            <Button
+              disabled={isArchiving}
+              loading={isArchiving}
+              type="text"
+              icon={<ArchiveIcon />}
+              onClick={() => archiveAllNotifications()}
+            >
+              Archive all
+            </Button>
+          </div>
+        )}
       </PopoverContent_Shadcn_>
     </Popover_Shadcn_>
   )

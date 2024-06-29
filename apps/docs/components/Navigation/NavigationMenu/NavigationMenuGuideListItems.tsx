@@ -1,25 +1,27 @@
+import * as Accordion from '@radix-ui/react-accordion'
+import { ChevronLeft } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import Image from 'next/legacy/image'
 import Link from 'next/link'
-import { useRouter } from 'next/router'
 import React, { useEffect, useRef } from 'react'
-import { IconChevronLeft } from '~/../../packages/ui'
-import * as Accordion from '@radix-ui/react-accordion'
+
 import HomeMenuIconPicker from './HomeMenuIconPicker'
+import { getPathWithoutHash } from './NavigationMenu.utils'
 
 const HeaderLink = React.memo(function HeaderLink(props: {
   title: string
   id: string
   url: string
 }) {
-  const router = useRouter()
+  const pathname = usePathname()
 
   return (
     <span
       className={[
         ' ',
         !props.title && 'capitalize',
-        props.url === router.asPath ? 'text-brand' : 'hover:text-brand text-foreground',
+        props.url === pathname ? 'text-brand' : 'hover:text-brand text-foreground',
       ].join(' ')}
     >
       {props.title ?? props.id}
@@ -28,10 +30,10 @@ const HeaderLink = React.memo(function HeaderLink(props: {
 })
 
 const ContentAccordionLink = React.memo(function ContentAccordionLink(props: any) {
-  const router = useRouter()
+  const pathname = usePathname()
   const { resolvedTheme } = useTheme()
-  const activeItem = props.subItem.url === router.asPath
-  const activeItemRef = useRef(null)
+  const activeItem = props.subItem.url === pathname
+  const activeItemRef = useRef<HTMLLIElement>(null)
 
   const LinkContainer = (props) => {
     return (
@@ -75,11 +77,8 @@ const ContentAccordionLink = React.memo(function ContentAccordionLink(props: any
           >
             {props.subItem.icon && (
               <Image
-                alt={props.subItem.name + router.basePath}
-                src={
-                  `${router.basePath}` +
-                  `${props.subItem.icon}${!resolvedTheme?.includes('dark') ? '-light' : ''}.svg`
-                }
+                alt={props.subItem.name}
+                src={`${props.subItem.icon}${!resolvedTheme?.includes('dark') ? '-light' : ''}.svg`}
                 width={15}
                 height={15}
               />
@@ -97,7 +96,7 @@ const ContentAccordionLink = React.memo(function ContentAccordionLink(props: any
                     href={`${subSubItem.url}`}
                     className={[
                       'cursor-pointer transition text-sm',
-                      subSubItem.url === router.asPath
+                      subSubItem.url === pathname
                         ? 'text-brand'
                         : 'hover:text-brand text-foreground-lighter',
                     ].join(' ')}
@@ -115,7 +114,7 @@ const ContentAccordionLink = React.memo(function ContentAccordionLink(props: any
 })
 
 const ContentLink = React.memo(function ContentLink(props: any) {
-  const router = useRouter()
+  const pathname = usePathname()
 
   return (
     <li className="mb-1.5">
@@ -123,13 +122,13 @@ const ContentLink = React.memo(function ContentLink(props: any) {
         href={props.url}
         className={[
           'cursor-pointer transition text-sm',
-          props.url === router.asPath
+          props.url === pathname
             ? 'text-brand-link'
             : 'hover:text-foreground text-foreground-lighter',
         ].join(' ')}
       >
         {props.icon && (
-          <Image alt={props.icon} width={12} height={12} src={`${router.basePath}${props.icon}`} />
+          <Image alt={props.icon} width={12} height={12} src={`${pathname}${props.icon}`} />
         )}
         {props.name}
       </Link>
@@ -151,7 +150,7 @@ const Content = (props) => {
       >
         <div className="relative w-2">
           <div className="transition-all ease-out ml-0 group-hover:-ml-1">
-            <IconChevronLeft size={10} strokeWidth={3} />
+            <ChevronLeft size={10} strokeWidth={3} />
           </div>
         </div>
         <span>Back to Home</span>

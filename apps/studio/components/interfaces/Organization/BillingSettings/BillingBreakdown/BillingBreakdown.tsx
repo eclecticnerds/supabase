@@ -32,10 +32,13 @@ const BillingBreakdown = () => {
     <ScaffoldSection>
       <ScaffoldSectionDetail>
         <div className="sticky space-y-2 top-12">
-          <p className="text-base m-0">Billing breakdown</p>
+          <p className="text-foreground text-base m-0">Billing Breakdown</p>
           <p className="text-sm text-foreground-light m-0">
             Current billing cycle: {billingCycleStart.format('MMM DD')} -{' '}
             {billingCycleEnd.format('MMM DD')}
+          </p>
+          <p className="text-sm text-foreground-light m-0">
+            It may take up to an hour for addon changes or new projects to show up.
           </p>
         </div>
       </ScaffoldSectionDetail>
@@ -54,14 +57,10 @@ const BillingBreakdown = () => {
 
         {invoiceFeatureEnabled && (
           <>
-            <p className="text-sm">Upcoming cost for next invoice</p>
             <p className="text-sm text-foreground-light">
-              The following table shows your upcoming costs excluding credits. Depending on your
-              usage, the final amount may vary. Next invoice on{' '}
-              <span className="text-foreground-light whitespace-nowrap">
-                {billingCycleEnd.format('MMM DD, YYYY')}
-              </span>
-              . See{' '}
+              The table shows your upcoming invoice, excluding credits. This invoice will continue
+              updating until the end of your billing period on {billingCycleEnd.format('MMMM DD')}.
+              See{' '}
               <Link
                 className="text-green-900 transition hover:text-green-1000"
                 href={`/org/${orgSlug}/usage`}
