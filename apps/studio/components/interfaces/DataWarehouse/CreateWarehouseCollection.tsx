@@ -1,14 +1,19 @@
-import { useParams } from 'common'
-import { useCreateCollection } from 'data/analytics'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { PermissionAction } from '@supabase/shared-types/out/constants'
 import { PlusIcon } from 'lucide-react'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
-import { Button, FormControl_Shadcn_, FormField_Shadcn_, Form_Shadcn_, Input, Modal } from 'ui'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
 import { z } from 'zod'
+
 import { FormMessage } from '@ui/components/shadcn/ui/form'
+import { Input } from '@ui/components/shadcn/ui/input'
+import { useParams } from 'common'
+import { ButtonTooltip } from 'components/ui/ButtonTooltip'
+import { useCreateCollection } from 'data/analytics/warehouse-collections-create-mutation'
+import { useCheckPermissions } from 'hooks/misc/useCheckPermissions'
+import { Button, FormControl_Shadcn_, FormField_Shadcn_, Form_Shadcn_, Modal } from 'ui'
 import { FormItemLayout } from 'ui-patterns/form/FormItemLayout/FormItemLayout'
 
 export const CreateWarehouseCollectionModal = () => {
@@ -16,10 +21,13 @@ export const CreateWarehouseCollectionModal = () => {
   const router = useRouter()
   const { ref } = useParams()
 
+  const canCreateCollection = useCheckPermissions(PermissionAction.ANALYTICS_WRITE, 'logflare')
+
   const { mutate: createCollection, isLoading } = useCreateCollection({
     onSuccess: (data) => {
+      // todo: remove typecast once api types are fixed
       setIsOpen(false)
-      router.push(`/project/${ref}/logs/collections/${data?.token}`)
+      router.push(`/project/${ref}/logs/collections/${(data as any).token}`)
     },
     onError: (error) => {
       toast.error(error.message)
@@ -53,14 +61,22 @@ export const CreateWarehouseCollectionModal = () => {
 
   return (
     <>
-      <Button
+      <ButtonTooltip
         type="default"
+        disabled={!canCreateCollection}
         className="justify-start flex-grow w-full"
-        icon={<PlusIcon size="14" />}
+        icon={<PlusIcon />}
         onClick={() => setIsOpen(!isOpen)}
+        tooltip={{
+          content: {
+            side: 'bottom',
+            text: 'You need additional permissions to create collections',
+          },
+        }}
       >
         New collection
-      </Button>
+      </ButtonTooltip>
+      {/* <Button onClick={() => setIsOpen(!isOpen)}>Create collection</Button> */}
       <Modal
         size="medium"
         onCancel={() => setIsOpen(!isOpen)}
@@ -83,7 +99,7 @@ export const CreateWarehouseCollectionModal = () => {
                 render={({ field }) => (
                   <FormItemLayout label="Collection name" layout="horizontal">
                     <FormControl_Shadcn_>
-                      <Input {...field} placeholder="Events" />
+                      <Input placeholder="Events" {...field} />
                     </FormControl_Shadcn_>
                   </FormItemLayout>
                 )}

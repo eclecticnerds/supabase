@@ -9,8 +9,9 @@ import APIDocsButton from 'components/ui/APIDocsButton'
 import NoPermission from 'components/ui/NoPermission'
 import { authKeys } from 'data/auth/keys'
 import { useUsersQuery } from 'data/auth/users-query'
-import { useCheckPermissions, usePermissionsLoaded } from 'hooks'
-import { Button, IconRefreshCw, IconSearch, IconX, Input, Listbox } from 'ui'
+import { useCheckPermissions, usePermissionsLoaded } from 'hooks/misc/useCheckPermissions'
+import { RefreshCw, Search, X } from 'lucide-react'
+import { Button, Input, Listbox } from 'ui'
 import AddUserDropdown from './AddUserDropdown'
 import UsersList from './UsersList'
 
@@ -84,15 +85,10 @@ const Users = () => {
             name="email"
             id="email"
             placeholder="Search by email or phone number"
-            icon={<IconSearch size="tiny" />}
+            icon={<Search size={14} />}
             actions={[
               search && (
-                <Button
-                  size="tiny"
-                  type="text"
-                  icon={<IconX size="tiny" />}
-                  onClick={() => clearSearch()}
-                />
+                <Button size="tiny" type="text" icon={<X />} onClick={() => clearSearch()} />
               ),
             ]}
           />
@@ -122,7 +118,7 @@ const Users = () => {
           {isNewAPIDocsEnabled && <APIDocsButton section={['user-management']} />}
           <Button
             size="tiny"
-            icon={<IconRefreshCw />}
+            icon={<RefreshCw />}
             type="default"
             loading={isRefetching && !isFetchingNextPage}
             onClick={() => refetch()}
